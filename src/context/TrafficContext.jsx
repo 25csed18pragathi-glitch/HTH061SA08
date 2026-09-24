@@ -27,6 +27,8 @@ export function TrafficProvider({ children }) {
   const [sensorEvents, setSensorEvents] = useState([]);
   const [simulationSeed, setSimulationSeed] = useState(2026);
   const [backendStatus, setBackendStatus] = useState('unknown');
+  const [databaseStatus, setDatabaseStatus] = useState('unknown');
+  const [videoServiceStatus, setVideoServiceStatus] = useState('unknown');
   const trafficRef = useRef(trafficState);
   const vehiclesRef = useRef(vehicles);
   const signalRef = useRef(signalState);
@@ -70,7 +72,15 @@ export function TrafficProvider({ children }) {
     let alive = true;
     const check = async () => {
       const result = await fetchHealth();
-      if (alive) setBackendStatus(result.ok ? 'connected' : 'disconnected');
+      if (!alive) return;
+
+      const nextBackendStatus = result.ok && result.data?.server_status === 'ok' ? 'connected' : 'disconnected';
+      const nextDatabaseStatus = result.data?.database_status || 'disconnected';
+      const nextVideoStatus = result.data?.python_service_status || 'disconnected';
+
+      setBackendStatus(nextBackendStatus);
+      setDatabaseStatus(nextDatabaseStatus);
+      setVideoServiceStatus(nextVideoStatus);
     };
     check();
     const id = window.setInterval(check, 10_000);
@@ -101,8 +111,8 @@ export function TrafficProvider({ children }) {
       setSensorState(nextSensor);
 
       const nextSignal = advanceSignalState(signalRef.current, result.trafficState, config, starvationRef.current, pedestrianRef.current, emergencyRef.current);
-      // Fire-and-forget signal event logging to MongoDB
-      if (nextSignal.state !== signalRef.current.state || nextSignal.phase !== signalRef.current.phase) {
+      // Fire-and-forget signal event logging to MongoDB when the database is reachable.
+      if (databaseStatus === 'connected' && (nextSignal.state !== signalRef.current.state || nextSignal.phase !== signalRef.current.phase)) {
         postSignalEvent({
           phase: nextSignal.phase,
           state: nextSignal.state,
@@ -112,7 +122,7 @@ export function TrafficProvider({ children }) {
           approvedGreen: nextSignal.approvedGreen,
           currentPriority: nextSignal.currentPriority,
           reason: nextSignal.reason,
-          safetyStatus: 'SAFE',
+          safetyStatus: nextSignal.safetyStatus || 'SAFE',
         }).catch(() => {});
       }
       const nextStarvation = updateStarvationState(starvationRef.current, result.trafficState, signalRef.current, nextSignal, simulationTimeRef.current + 1, config.starvation);
@@ -133,7 +143,7 @@ export function TrafficProvider({ children }) {
       setSimulationTime(current => {
         const nextTick = current + 1;
         // Fire-and-forget POST every 5 ticks
-        if (nextTick % 5 === 0) {
+        if (nextTick % 5 === 0 && databaseStatus === 'connected') {
           const records = Object.entries(result.trafficState).map(([road, data]) => ({
             road,
             cycle: data.vehicles.cycle,
@@ -149,8 +159,8 @@ export function TrafficProvider({ children }) {
             source: 'simulation',
           }));
           postTrafficRecords(records).then(res => {
-            if (res.ok) setBackendStatus('connected');
-            else if (res.status === 0) setBackendStatus('disconnected');
+            if (res.ok) setDatabaseStatus('connected');
+            else if (res.status === 0) setDatabaseStatus('disconnected');
           });
         }
         return nextTick;
@@ -256,6 +266,8 @@ export function TrafficProvider({ children }) {
     simulationTime,
     simulationSeed,
     backendStatus,
+    databaseStatus,
+    videoServiceStatus,
     setScenario,
     setMode,
     setSimulationSeed,
@@ -272,7 +284,7 @@ export function TrafficProvider({ children }) {
     vehicleRecords: vehicles,
     totalVehicles: Object.values(trafficState).reduce((total, road) => total + road.totalVehicles, 0),
     averageWaitingTime: Object.values(trafficState).length ? Math.round(Object.values(trafficState).reduce((total, road) => total + road.waitingTime, 0) / Object.values(trafficState).length) : 0,
-  }), [applyVideoAnalysis, backendStatus, config, emergencyState, isRunning, mode, pedestrianState, scenario, sensorEvents, sensorState, signalState, simulationSeed, simulationTime, starvationState, syncManualTraffic, trafficState, vehicles]);
+  }), [applyVideoAnalysis, backendStatus, config, databaseStatus, emergencyState, isRunning, mode, pedestrianState, scenario, sensorEvents, sensorState, signalState, simulationSeed, simulationTime, starvationState, syncManualTraffic, trafficState, vehicles, videoServiceStatus]);
 
   return <TrafficContext.Provider value={value}>{children}</TrafficContext.Provider>;
 }

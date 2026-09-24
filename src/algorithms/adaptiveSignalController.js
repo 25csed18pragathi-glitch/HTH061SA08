@@ -1,4 +1,5 @@
 import { ADAPTIVE_PRIORITY_WEIGHTS, SIGNAL_TIMING_DEFAULTS } from '../data/trafficConfig';
+import { validateSignalDecision } from '../safety/SafetyValidator';
 import { getPriorityBoost } from './antiStarvation';
 import { getPedestrianConfig } from './pedestrianPriority';
 import { getEmergencyConfig } from './emergencyManagement';
@@ -101,60 +102,81 @@ export function advanceSignalState(signalState, trafficState, config, starvation
   const emergencyRequested = Boolean(emergencyRequest);
   const pedestrianRequested = Boolean(pedestrianState.pedestrianRequest);
 
+  let nextState;
+
   if (signalState.state === SIGNAL_STATES.WALK) {
-    if (signalState.remaining > 1) return { ...signalState, remaining: signalState.remaining - 1 };
-    return { ...signalState, state: SIGNAL_STATES.ALL_RED, remaining: timing.allRed, transition: 'PEDESTRIAN_RETURN' };
-  }
-
-  if (signalState.emergencyGreen && signalState.state === SIGNAL_STATES.GREEN && signalState.remaining <= 1) {
-    return { ...signalState, state: SIGNAL_STATES.ALL_RED, remaining: timing.allRed, transition: 'EMERGENCY_RETURN', emergencyGreen: false };
-  }
-
-  if (signalState.state === SIGNAL_STATES.GREEN && emergencyRequested && (signalState.greenElapsed || 0) >= timing.minGreen) {
-    return { ...signalState, state: SIGNAL_STATES.YELLOW, remaining: timing.yellow, transition: 'EMERGENCY' };
-  }
-
-  if (signalState.state === SIGNAL_STATES.GREEN && pedestrianRequested && (signalState.greenElapsed || 0) >= timing.minGreen) {
-    return { ...signalState, state: SIGNAL_STATES.YELLOW, remaining: timing.yellow, transition: 'PEDESTRIAN' };
-  }
-
-  if (signalState.remaining > 1) {
-    return { ...signalState, remaining: signalState.remaining - 1, greenElapsed: signalState.state === SIGNAL_STATES.GREEN ? (signalState.greenElapsed || 0) + 1 : signalState.greenElapsed };
-  }
-
-  if (signalState.state === SIGNAL_STATES.GREEN) {
-    return { ...signalState, state: SIGNAL_STATES.YELLOW, remaining: timing.yellow, transition: emergencyRequested ? 'EMERGENCY' : pedestrianRequested ? 'PEDESTRIAN' : null };
-  }
-  if (signalState.state === SIGNAL_STATES.YELLOW) {
-    return { ...signalState, state: SIGNAL_STATES.ALL_RED, remaining: timing.allRed, transition: signalState.transition || (emergencyRequested ? 'EMERGENCY' : pedestrianRequested ? 'PEDESTRIAN' : null) };
-  }
-  if (signalState.state === SIGNAL_STATES.ALL_RED && emergencyRequested && (signalState.transition === 'EMERGENCY' || signalState.transition === 'EMERGENCY_RETURN' || signalState.transition === 'PEDESTRIAN' || !signalState.transition)) {
-    return { phase: phaseForRoad(emergencyRequest.road), state: SIGNAL_STATES.GREEN, remaining: emergency.greenDuration, currentPriority: Number.MAX_SAFE_INTEGER, requestedGreen: emergency.greenDuration, approvedGreen: emergency.greenDuration, greenElapsed: 0, transition: null, emergencyGreen: true, emergencyRoad: emergencyRequest.road, emergencyType: emergencyRequest.type, reason: `CRITICAL ${emergencyRequest.type.toUpperCase()}` };
-  }
-  if (signalState.state === SIGNAL_STATES.ALL_RED && signalState.transition === 'EMERGENCY_RETURN' && !emergencyRequested) {
+    if (signalState.remaining > 1) {
+      nextState = { ...signalState, remaining: signalState.remaining - 1 };
+    } else {
+      nextState = { ...signalState, state: SIGNAL_STATES.ALL_RED, remaining: timing.allRed, transition: 'PEDESTRIAN_RETURN' };
+    }
+  } else if (signalState.emergencyGreen && signalState.state === SIGNAL_STATES.GREEN && signalState.remaining <= 1) {
+    nextState = { ...signalState, state: SIGNAL_STATES.ALL_RED, remaining: timing.allRed, transition: 'EMERGENCY_RETURN', emergencyGreen: false };
+  } else if (signalState.state === SIGNAL_STATES.GREEN && emergencyRequested && (signalState.greenElapsed || 0) >= timing.minGreen) {
+    nextState = { ...signalState, state: SIGNAL_STATES.YELLOW, remaining: timing.yellow, transition: 'EMERGENCY' };
+  } else if (signalState.state === SIGNAL_STATES.GREEN && pedestrianRequested && (signalState.greenElapsed || 0) >= timing.minGreen) {
+    nextState = { ...signalState, state: SIGNAL_STATES.YELLOW, remaining: timing.yellow, transition: 'PEDESTRIAN' };
+  } else if (signalState.remaining > 1) {
+    nextState = { ...signalState, remaining: signalState.remaining - 1, greenElapsed: signalState.state === SIGNAL_STATES.GREEN ? (signalState.greenElapsed || 0) + 1 : signalState.greenElapsed };
+  } else if (signalState.state === SIGNAL_STATES.GREEN) {
+    nextState = { ...signalState, state: SIGNAL_STATES.YELLOW, remaining: timing.yellow, transition: emergencyRequested ? 'EMERGENCY' : pedestrianRequested ? 'PEDESTRIAN' : null };
+  } else if (signalState.state === SIGNAL_STATES.YELLOW) {
+    nextState = { ...signalState, state: SIGNAL_STATES.ALL_RED, remaining: timing.allRed, transition: signalState.transition || (emergencyRequested ? 'EMERGENCY' : pedestrianRequested ? 'PEDESTRIAN' : null) };
+  } else if (signalState.state === SIGNAL_STATES.ALL_RED && emergencyRequested && (signalState.transition === 'EMERGENCY' || signalState.transition === 'EMERGENCY_RETURN' || signalState.transition === 'PEDESTRIAN' || !signalState.transition)) {
+    nextState = { phase: phaseForRoad(emergencyRequest.road), state: SIGNAL_STATES.GREEN, remaining: emergency.greenDuration, currentPriority: Number.MAX_SAFE_INTEGER, requestedGreen: emergency.greenDuration, approvedGreen: emergency.greenDuration, greenElapsed: 0, transition: null, emergencyGreen: true, emergencyRoad: emergencyRequest.road, emergencyType: emergencyRequest.type, reason: `CRITICAL ${emergencyRequest.type.toUpperCase()}` };
+  } else if (signalState.state === SIGNAL_STATES.ALL_RED && signalState.transition === 'EMERGENCY_RETURN' && !emergencyRequested) {
     const { nextPhase, priorities } = selectNextPhase(trafficState, signalState.phase, priorityWeights, starvationState, config?.starvation);
     const requestedGreen = calculateGreenTime(priorities[nextPhase], priorities[nextPhase === SIGNAL_PHASES.NS ? SIGNAL_PHASES.EW : SIGNAL_PHASES.NS], timing);
-    return { phase: nextPhase, state: SIGNAL_STATES.GREEN, remaining: requestedGreen, currentPriority: priorities[nextPhase], requestedGreen, approvedGreen: requestedGreen, greenElapsed: 0, transition: null, reason: getTrafficReason(trafficState, nextPhase, priorityWeights, starvationState) };
-  }
-  if (signalState.state === SIGNAL_STATES.ALL_RED && !signalState.transition && pedestrianRequested) {
-    if (signalState.remaining > 1) return { ...signalState, remaining: signalState.remaining - 1, transition: 'PEDESTRIAN' };
-    return { ...signalState, state: SIGNAL_STATES.WALK, remaining: pedestrian.walkDuration, transition: 'PEDESTRIAN_WALK', greenElapsed: 0 };
-  }
-  if (signalState.state === SIGNAL_STATES.ALL_RED && signalState.transition === 'PEDESTRIAN') {
-    return { ...signalState, state: SIGNAL_STATES.WALK, remaining: pedestrian.walkDuration, transition: 'PEDESTRIAN_WALK', greenElapsed: 0 };
+    nextState = { phase: nextPhase, state: SIGNAL_STATES.GREEN, remaining: requestedGreen, currentPriority: priorities[nextPhase], requestedGreen, approvedGreen: requestedGreen, greenElapsed: 0, transition: null, reason: getTrafficReason(trafficState, nextPhase, priorityWeights, starvationState) };
+  } else if (signalState.state === SIGNAL_STATES.ALL_RED && !signalState.transition && pedestrianRequested) {
+    if (signalState.remaining > 1) {
+      nextState = { ...signalState, remaining: signalState.remaining - 1, transition: 'PEDESTRIAN' };
+    } else {
+      nextState = { ...signalState, state: SIGNAL_STATES.WALK, remaining: pedestrian.walkDuration, transition: 'PEDESTRIAN_WALK', greenElapsed: 0 };
+    }
+  } else if (signalState.state === SIGNAL_STATES.ALL_RED && signalState.transition === 'PEDESTRIAN') {
+    nextState = { ...signalState, state: SIGNAL_STATES.WALK, remaining: pedestrian.walkDuration, transition: 'PEDESTRIAN_WALK', greenElapsed: 0 };
+  } else {
+    const { nextPhase, priorities } = selectNextPhase(trafficState, signalState.phase, priorityWeights, starvationState, config?.starvation);
+    const requestedGreen = calculateGreenTime(priorities[nextPhase], priorities[nextPhase === SIGNAL_PHASES.NS ? SIGNAL_PHASES.EW : SIGNAL_PHASES.NS], timing);
+    nextState = {
+      phase: nextPhase,
+      state: SIGNAL_STATES.GREEN,
+      remaining: requestedGreen,
+      currentPriority: priorities[nextPhase],
+      requestedGreen,
+      approvedGreen: requestedGreen,
+      greenElapsed: 0,
+      transition: null,
+      reason: getTrafficReason(trafficState, nextPhase, priorityWeights, starvationState),
+    };
   }
 
-  const { nextPhase, priorities } = selectNextPhase(trafficState, signalState.phase, priorityWeights, starvationState, config?.starvation);
-  const requestedGreen = calculateGreenTime(priorities[nextPhase], priorities[nextPhase === SIGNAL_PHASES.NS ? SIGNAL_PHASES.EW : SIGNAL_PHASES.NS], timing);
+  const validation = validateSignalDecision({
+    requestedGreenTime: nextState.requestedGreen ?? nextState.remaining ?? timing.minGreen,
+    phase: nextState.phase,
+    state: nextState.state,
+    previousState: signalState.state,
+    minGreen: timing.minGreen,
+    maxGreen: timing.maxGreen,
+    yellow: timing.yellow,
+    allRed: timing.allRed,
+    emergencyActive: emergencyRequested,
+    pedestrianRequested,
+    sensorFallback: false,
+    conflictingGreen: false,
+    antiStarvationDecision: false,
+  });
+
   return {
-    phase: nextPhase,
-    state: SIGNAL_STATES.GREEN,
-    remaining: requestedGreen,
-    currentPriority: priorities[nextPhase],
-    requestedGreen,
-    approvedGreen: requestedGreen,
-    greenElapsed: 0,
-    transition: null,
-    reason: getTrafficReason(trafficState, nextPhase, priorityWeights, starvationState),
+    ...nextState,
+    requestedGreen: validation.requestedGreenTime,
+    approvedGreen: validation.finalGreenTime,
+    remaining: nextState.state === SIGNAL_STATES.GREEN ? validation.finalGreenTime : nextState.remaining,
+    safetyStatus: validation.safetyStatus,
+    safetyReason: validation.reason,
+    violations: validation.violations,
+    warnings: validation.warnings,
+    reason: validation.reason || nextState.reason,
   };
 }

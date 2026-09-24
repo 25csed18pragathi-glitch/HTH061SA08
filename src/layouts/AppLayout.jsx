@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { Activity, BarChart3, CarFront, ChevronRight, CircleGauge, Clock3, Cross, LayoutDashboard, Menu, Settings, ShieldCheck, Siren, UserRound, UsersRound, X } from 'lucide-react';
 import { useState } from 'react';
+import { useTraffic } from '../context/TrafficContext';
 
 const navigation = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -14,6 +15,8 @@ const navigation = [
 
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { backendStatus, databaseStatus, videoServiceStatus } = useTraffic();
+
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}>
@@ -41,7 +44,9 @@ export default function AppLayout() {
           <button className="icon-button mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu size={20} /></button>
           <div className="breadcrumb"><span>FlowSync</span><ChevronRight size={14} /><strong>Operations overview</strong></div>
           <div className="topbar-actions">
-            <div className="system-pill"><span className="pulse-dot" />System online</div>
+            <div className="system-pill"><span className="pulse-dot" />Backend: {backendStatus}</div>
+            <div className="system-pill"><span className="pulse-dot" />DB: {databaseStatus}</div>
+            <div className="system-pill"><span className="pulse-dot" />Video: {videoServiceStatus}</div>
             <div className="topbar-clock"><Clock3 size={15} /> <span>Tuesday, 10:31 AM</span></div>
             <div className="avatar avatar-top"><UserRound size={16} /></div>
           </div>

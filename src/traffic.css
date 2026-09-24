@@ -52,3 +52,30 @@
 .result-item.highlight span, .result-item.highlight strong { color: #fff; }
 .video-analysis-result .primary-button:disabled { background: var(--green); opacity: 0.8; cursor: default; }
 @media (max-width: 600px) { .result-grid { grid-template-columns: repeat(2, 1fr); } .camera-buttons { flex-direction: column; } }
+
+/* === Sensor Health Panel === */
+.sensor-health-grid { display: grid; gap: 10px; }
+.sensor-row { display: grid; grid-template-columns: 140px repeat(3, 1fr); gap: 10px; align-items: center; padding: 10px 14px; border: 1px solid var(--line); border-radius: 6px; background: #fbfcfb; font-size: 11px; color: var(--muted); }
+.sensor-row strong { color: var(--ink); font-size: 12px; }
+.sensor-row b { color: var(--ink); }
+.sensor-fallback-reason { grid-column: 1 / -1; color: #b45309; font-size: 10px; font-style: italic; margin-top: 2px; }
+.sensor-event-log { margin-top: 14px; display: grid; gap: 4px; }
+.sensor-event-log > strong { font-size: 11px; color: var(--ink); margin-bottom: 4px; }
+.sensor-event { display: flex; gap: 10px; padding: 6px 10px; border-radius: 4px; font-size: 10px; color: var(--muted); background: #f8f9f8; }
+.sensor-event span:first-child { font-weight: 700; min-width: 70px; }
+.sensor-event.sensor_offline { background: #fff0f0; color: #c53030; }
+.sensor-event.sensor_warning { background: #fffbeb; color: #b45309; }
+.sensor-event.sensor_healthy { background: #f0fdf4; color: #166534; }
+@media (max-width: 800px) { .sensor-row { grid-template-columns: 1fr; } }
+
+/* === Scenario Generator Info === */
+.scenario-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.scenario-info-grid > div { padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: #fbfcfb; display: flex; flex-direction: column; gap: 3px; }
+.scenario-info-grid span { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.scenario-info-grid strong { font-size: 14px; color: var(--ink); }
+
+/* === Seed Input === */
+.seed-input { display: inline-flex; align-items: center; gap: 6px; margin-left: 12px; }
+.seed-input label { font-size: 10px; color: var(--muted); font-weight: 700; }
+.seed-input input { width: 80px; border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; font-size: 11px; color: var(--ink); background: #fff; }
+

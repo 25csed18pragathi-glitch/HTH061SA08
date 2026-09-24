@@ -11,3 +11,5 @@ __pycache__/
 *.pyc
 
 dist/
+node_modules
+python-service/yolov8n.pt

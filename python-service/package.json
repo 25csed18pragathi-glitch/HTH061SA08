@@ -1,0 +1,5 @@
+{
+  "name": "flowsync-python-service",
+  "version": "1.0.0",
+  "description": "Python YOLO vehicle detection service for FlowSync2.0"
+}

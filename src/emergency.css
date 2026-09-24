@@ -1,0 +1,19 @@
+.emergency-live-panel { padding: 20px; margin: 18px 0 23px; }
+.emergency-form { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+.emergency-form label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; min-width: 150px; }
+.emergency-form select { border: 1px solid var(--line); border-radius: 5px; padding: 8px; color: var(--ink); background: #fbfcfb; }
+.emergency-live-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.emergency-live-grid > div { display: grid; gap: 5px; color: var(--muted); font-size: 10px; }
+.emergency-live-grid strong { color: var(--ink); font-size: 12px; }
+.emergency-ambulance { position: absolute; z-index: 8; width: 34px; height: 25px; display: grid; place-items: center; animation: emergency-drive 2.2s linear infinite; }
+.emergency-ambulance strong { position: relative; z-index: 2; font-size: 22px; filter: drop-shadow(0 2px 2px #24342a66); }
+.emergency-light { position: absolute; top: 1px; width: 6px; height: 6px; border-radius: 50%; background: #36a8ff; box-shadow: 0 0 8px #36a8ff; animation: emergency-flash .45s steps(2, end) infinite; }
+.emergency-light:first-child { left: 7px; }
+.emergency-light:nth-child(2) { right: 7px; animation-delay: .22s; background: #5b6dff; box-shadow: 0 0 8px #5b6dff; }
+.emergency-north { left: calc(50% - 17px); top: 8px; }
+.emergency-south { left: calc(50% - 17px); bottom: 8px; }
+.emergency-east { right: 8px; top: calc(50% - 13px); }
+.emergency-west { left: 8px; top: calc(50% - 13px); }
+@keyframes emergency-flash { 50% { opacity: .15; } }
+@keyframes emergency-drive { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(8px, 0); } }
+@media (max-width: 800px) { .emergency-live-grid { grid-template-columns: repeat(2, 1fr); } }

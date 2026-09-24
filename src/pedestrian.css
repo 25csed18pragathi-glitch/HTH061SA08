@@ -1,0 +1,7 @@
+.pedestrian-live-panel { padding: 20px; margin: 18px 0 23px; }
+.pedestrian-live-grid { display: grid; grid-template-columns: 1.4fr repeat(5, 1fr); gap: 10px; align-items: end; }
+.pedestrian-live-grid label, .pedestrian-live-grid > div { display: grid; gap: 6px; color: var(--muted); font-size: 10px; }
+.pedestrian-live-grid input { width: 100%; border: 1px solid var(--line); border-radius: 5px; padding: 8px; color: var(--ink); background: #fbfcfb; }
+.pedestrian-live-grid strong { color: var(--ink); font-size: 13px; }
+.pedestrian-request-button { margin-top: 16px; display: inline-flex; align-items: center; gap: 7px; }
+@media (max-width: 800px) { .pedestrian-live-grid { grid-template-columns: repeat(2, 1fr); } }

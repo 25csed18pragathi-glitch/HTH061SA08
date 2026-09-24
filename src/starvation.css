@@ -1,0 +1,9 @@
+.starvation-panel { padding: 20px; margin: 18px 0 23px; }
+.starvation-grid { display: grid; gap: 8px; }
+.starvation-row { display: grid; grid-template-columns: .7fr 1fr 1fr 1.4fr .8fr 1fr; gap: 10px; align-items: center; padding: 11px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 10px; }
+.starvation-row strong { color: var(--ink); font-size: 12px; }
+.starvation-row b { color: var(--green-dark); font-size: 10px; }
+.starvation-row .starvation-warning { color: var(--amber); }
+.starvation-row .starvation-priority { color: var(--coral); }
+.starvation-row .boost-active { color: var(--coral); font-weight: 700; }
+@media (max-width: 800px) { .starvation-row { grid-template-columns: 1fr 1fr; gap: 7px; } }
